@@ -1,0 +1,930 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Joshua | Student Portfolio</title>
+  <meta name="description" content="Joshua's cinematic student portfolio with a mouse-reactive starfield, custom cursor, smooth motion, and glassmorphism UI." />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050816;
+      --panel: rgba(255,255,255,0.08);
+      --line: rgba(255,255,255,0.12);
+      --text: #f8fbff;
+      --muted: rgba(232,240,255,0.72);
+      --cyan: #7bf6ff;
+      --blue: #7a8dff;
+      --violet: #b692ff;
+      --green: #6df9b5;
+      --shadow: 0 24px 60px rgba(0,0,0,0.45);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: auto; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 12%, rgba(123,246,255,0.14), transparent 22%),
+        radial-gradient(circle at 82% 18%, rgba(122,141,255,0.16), transparent 24%),
+        radial-gradient(circle at 50% 100%, rgba(182,146,255,0.12), transparent 30%),
+        linear-gradient(180deg, #03050f 0%, #050816 36%, #09111e 100%);
+      color: var(--text);
+      overflow-x: hidden;
+      cursor: none;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 90px 90px;
+      mask-image: radial-gradient(circle at center, #000, transparent 82%);
+      opacity: 0.46;
+      z-index: 0;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    button, input, textarea { font: inherit; color: inherit; }
+    .canvas-wrap, .noise, .vignette { position: fixed; inset: 0; pointer-events: none; }
+    .canvas-wrap { z-index: 0; }
+    #bg-canvas { width: 100%; height: 100%; opacity: 0.92; }
+    .noise {
+      z-index: 1;
+      opacity: 0.06;
+      background-image:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.45) .7px, transparent 1px),
+        radial-gradient(circle at 80% 24%, rgba(255,255,255,0.35) .7px, transparent 1px),
+        radial-gradient(circle at 40% 78%, rgba(255,255,255,0.3) .7px, transparent 1px);
+      background-size: 160px 160px;
+    }
+    .vignette { z-index: 2; background: radial-gradient(circle at center, transparent 54%, rgba(0,0,0,0.36)); }
+    .cursor-dot, .cursor-ring {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 9999;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      will-change: transform;
+    }
+    .cursor-dot {
+      width: 14px;
+      height: 14px;
+      background: #ffffff;
+      box-shadow: 0 0 18px rgba(255,255,255,0.85), 0 0 36px rgba(123,246,255,0.28);
+      transition: width .18s ease, height .18s ease, box-shadow .18s ease;
+    }
+    .cursor-ring {
+      width: 40px;
+      height: 40px;
+      border: 1.5px solid rgba(255,255,255,0.88);
+      background: rgba(255,255,255,0.02);
+      box-shadow: 0 0 24px rgba(255,255,255,0.12);
+      transition: width .18s ease, height .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    body.cursor-hover .cursor-dot {
+      width: 18px;
+      height: 18px;
+      box-shadow: 0 0 22px rgba(255,255,255,0.95), 0 0 44px rgba(123,246,255,0.38);
+    }
+    body.cursor-hover .cursor-ring {
+      width: 76px;
+      height: 76px;
+      border-color: rgba(255,255,255,0.98);
+      background: rgba(255,255,255,0.04);
+      box-shadow: 0 0 32px rgba(123,246,255,0.28);
+    }
+    .page { position: relative; z-index: 3; }
+    .container { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    .glass {
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05));
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+    }
+    .glass-strong {
+      background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.08));
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(26px);
+      -webkit-backdrop-filter: blur(26px);
+    }
+    .gradient-text {
+      background: linear-gradient(120deg, #fff 8%, var(--cyan) 38%, #9ab4ff 62%, #efd4ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .site-header { position: absolute; inset: 0 0 auto; z-index: 50; padding: 18px 0; }
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 18px 14px 24px;
+      border-radius: 0;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      transition: opacity .3s ease;
+    }
+    .navbar.scrolled { background: transparent; border: 0; box-shadow: none; }
+    .brand { font-weight: 700; letter-spacing: .3em; text-transform: uppercase; white-space: nowrap; }
+    .nav-links { display: flex; align-items: center; gap: 8px; padding: 0; border-radius: 0; background: transparent; border: 0; }
+    .nav-link, .menu-link { padding: 12px 18px; border-radius: 999px; color: rgba(242,247,255,0.8); transition: background .22s ease, color .22s ease, transform .22s ease; }
+    .nav-link:hover, .menu-link:hover, .button:hover, .social:hover, .project-card:hover, .gallery-card:hover, .contact-link:hover, .skill-pill:hover { transform: translateY(-2px); }
+    .nav-link:hover, .menu-link:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .menu-toggle {
+      display: none;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06));
+    }
+    .menu-toggle span, .menu-toggle span::before, .menu-toggle span::after {
+      display: block;
+      width: 20px;
+      height: 2px;
+      border-radius: 999px;
+      background: #fff;
+      content: "";
+      transition: transform .24s ease;
+    }
+    .menu-toggle span::before { transform: translateY(-6px); }
+    .menu-toggle span::after { transform: translateY(4px); }
+    .menu-toggle.active span { background: transparent; }
+    .menu-toggle.active span::before { transform: rotate(45deg); }
+    .menu-toggle.active span::after { transform: rotate(-45deg) translateY(-1px); }
+    .menu-overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 40;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .32s ease, visibility .32s ease;
+      background:
+        radial-gradient(circle at top, rgba(123,246,255,0.18), transparent 32%),
+        radial-gradient(circle at bottom, rgba(122,141,255,0.16), transparent 34%),
+        rgba(5,8,22,0.95);
+      backdrop-filter: blur(26px);
+      -webkit-backdrop-filter: blur(26px);
+    }
+    .menu-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; }
+    .menu-panel { display: grid; gap: 14px; text-align: center; }
+    .menu-link { font-size: clamp(2rem, 7vw, 3.75rem); font-weight: 700; letter-spacing: -.04em; }
+    .section { padding: 120px 0; position: relative; }
+    .section-heading { max-width: 720px; margin: 0 auto 56px; text-align: center; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      font-size: 12px;
+      letter-spacing: .34em;
+      text-transform: uppercase;
+      color: rgba(232,240,255,0.58);
+    }
+    .eyebrow::before { content: ""; width: 34px; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55)); }
+    .title { margin: 0; font-size: clamp(2.7rem, 6vw, 5.4rem); line-height: .96; letter-spacing: -.05em; }
+    .lead { margin: 20px 0 0; color: var(--muted); line-height: 1.85; font-size: clamp(1rem, 2vw, 1.08rem); }
+    .hero { min-height: 100vh; display: grid; align-items: center; padding: 112px 0 80px; overflow: clip; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr); gap: 44px; align-items: center; }
+    .status-badge, .availability, .floating-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.07);
+      box-shadow: 0 16px 32px rgba(0,0,0,0.25);
+    }
+    .status-dot, .available-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(109,249,181,0.7); animation: pingGlow 1.8s infinite; }
+    .hero-title { margin: 22px 0 0; font-size: clamp(2.6rem, 6.6vw, 5.2rem); line-height: .94; letter-spacing: -.06em; }
+    .type-line { margin-top: 20px; min-height: 44px; font-size: clamp(1.35rem, 3.4vw, 2.1rem); color: rgba(244,248,255,0.84); }
+    .type-cursor { display: inline-block; animation: blink 1s step-end infinite; }
+    .hero-text { margin: 24px auto 0; max-width: 700px; color: var(--muted); line-height: 1.9; font-size: clamp(1rem, 2vw, 1.06rem); text-align: center; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; justify-content: center; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 56px;
+      padding: 0 24px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    }
+    .button-primary { background: linear-gradient(135deg, var(--cyan), #d6faff); color: #09101f; font-weight: 700; box-shadow: 0 20px 44px rgba(123,246,255,0.22); }
+    .button-secondary { background: rgba(255,255,255,0.06); }
+    .button-tertiary { background: linear-gradient(135deg, rgba(123,246,255,0.16), rgba(122,141,255,0.12)); }
+    .hero-meta { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 18px; margin-top: 30px; }
+    .socials { display: flex; gap: 12px; }
+    .social {
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.08);
+      transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    }
+    .hero-visual { position: relative; min-height: 620px; border-radius: 38px; overflow: hidden; isolation: isolate; }
+    .hero-backdrop {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(5,8,22,0.25), rgba(5,8,22,0.78)),
+        radial-gradient(circle at 30% 18%, rgba(123,246,255,0.22), transparent 28%),
+        radial-gradient(circle at 76% 28%, rgba(122,141,255,0.2), transparent 24%),
+        radial-gradient(circle at 50% 72%, rgba(182,146,255,0.16), transparent 26%),
+        url("https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1600&q=80") center/cover;
+      transform: scale(1.06);
+      filter: blur(1px) saturate(1.08);
+    }
+    .hero-backdrop::after {
+      content: "";
+      position: absolute;
+      inset: -10%;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08), transparent 24%), linear-gradient(135deg, rgba(255,255,255,0.04), transparent 45%);
+      animation: pulseZoom 10s ease-in-out infinite;
+    }
+    .hero-glow, .hero-glow-two { position: absolute; border-radius: 50%; filter: blur(28px); }
+    .hero-glow { width: 360px; height: 360px; left: -110px; top: 40px; background: radial-gradient(circle, rgba(123,246,255,0.4), transparent 66%); animation: float 8s ease-in-out infinite; }
+    .hero-glow-two { width: 320px; height: 320px; right: -90px; bottom: -30px; background: radial-gradient(circle, rgba(122,141,255,0.34), transparent 68%); animation: float 10s ease-in-out infinite reverse; }
+    .hero-stack { position: relative; z-index: 2; height: 100%; padding: 28px; display: grid; align-items: end; }
+    .hero-card { position: relative; border-radius: 32px; padding: 26px; overflow: hidden; }
+    .hero-card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent 45%); pointer-events: none; }
+    .hero-topline { display: flex; justify-content: space-between; gap: 12px; font-size: .78rem; letter-spacing: .28em; text-transform: uppercase; color: rgba(230,238,255,0.6); }
+    .hero-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+    .stat-box { padding: 18px; border-radius: 22px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
+    .stat-box h3 { margin: 0; font-size: 1.9rem; letter-spacing: -.04em; }
+    .stat-box p { margin: 8px 0 0; color: rgba(232,240,255,0.66); line-height: 1.6; font-size: .96rem; }
+    .floating-chip { position: absolute; z-index: 3; font-size: .92rem; }
+    .chip-one { top: 56px; left: -34px; animation: float 7s ease-in-out infinite; }
+    .chip-two { right: -32px; top: 180px; animation: float 9s ease-in-out infinite reverse; }
+    .chip-three { right: 26px; bottom: 34px; animation: float 8.6s ease-in-out infinite; }
+    .about-grid, .projects-grid, .gallery-grid, .reviews-grid, .contact-grid { display: grid; gap: 24px; }
+    .about-grid { grid-template-columns: 1.05fr .95fr; }
+    .about-card, .timeline-card, .contact-card, .contact-form-card { padding: 28px; }
+    .about-card, .timeline-card, .project-card, .gallery-card, .contact-card, .contact-form-card { border-radius: 28px; overflow: hidden; position: relative; }
+    .about-highlights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
+    .highlight, .timeline-item { padding: 18px; border-radius: 22px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
+    .highlight strong { display: block; margin-bottom: 8px; font-size: 1.2rem; letter-spacing: -.03em; }
+    .highlight span, .timeline-item p { color: rgba(232,240,255,0.68); line-height: 1.7; }
+    .timeline-list { display: grid; gap: 18px; }
+    .timeline-item small { display: block; margin-bottom: 8px; font-size: .8rem; letter-spacing: .24em; text-transform: uppercase; color: rgba(232,240,255,0.52); }
+    .timeline-item h3 { margin: 0; font-size: 1.14rem; }
+    .skills-wrap { display: grid; gap: 16px; overflow: hidden; }
+    .marquee { position: relative; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+    .marquee-track { display: flex; gap: 16px; width: max-content; padding: 8px 0; animation: marqueeLeft 28s linear infinite; }
+    .marquee.right .marquee-track { animation-name: marqueeRight; animation-duration: 30s; }
+    .marquee:hover .marquee-track { animation-play-state: paused; }
+    .skill-pill { display: inline-flex; align-items: center; gap: 12px; white-space: nowrap; padding: 14px 18px; border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06)); border: 1px solid rgba(255,255,255,0.12); color: rgba(245,249,255,0.86); transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease; }
+    .skill-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: linear-gradient(135deg, var(--cyan), #fff); box-shadow: 0 0 14px rgba(123,246,255,0.56); }
+    .projects-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .project-card { min-height: 340px; padding: 26px; display: flex; flex-direction: column; justify-content: space-between; transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
+    .card-sheen { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 24%, rgba(255,255,255,0.12) 50%, transparent 76%); transform: translateX(-140%); transition: transform .7s ease; pointer-events: none; }
+    .project-card:hover .card-sheen { transform: translateX(140%); }
+    .project-card h3, .gallery-caption h3, .contact-card h3 { margin: 10px 0 0; font-size: 1.5rem; letter-spacing: -.04em; }
+    .project-card p, .gallery-caption p, .contact-card p { color: rgba(232,240,255,0.68); line-height: 1.75; }
+    .project-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .project-tags span { padding: 10px 14px; border-radius: 999px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); font-size: .88rem; color: rgba(245,248,255,0.74); }
+    .gallery-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .gallery-card { min-height: 320px; transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
+    .gallery-card img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s ease, filter .35s ease; filter: saturate(.92); }
+    .gallery-card:hover img { transform: scale(1.08); filter: saturate(1.1); }
+    .gallery-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(5,8,22,0.86)); }
+    .gallery-caption { position: absolute; inset: auto 18px 18px; z-index: 2; }
+    .reviews-stage {
+      position: relative;
+      min-height: 760px;
+    }
+    .reviews-grid {
+      position: relative;
+      max-width: 860px;
+      margin: 0 auto;
+      padding-top: 12px;
+    }
+    .review-card {
+      position: sticky;
+      top: 110px;
+      padding: 28px;
+      border-radius: 28px;
+      min-height: 240px;
+      transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    }
+    .review-card:not(:first-child) {
+      margin-top: -92px;
+    }
+    .review-topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+      color: rgba(232,240,255,0.62);
+      font-size: .92rem;
+    }
+    .review-stars {
+      letter-spacing: .24em;
+      color: #fff1a8;
+    }
+    .review-card blockquote {
+      margin: 0;
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      line-height: 1.8;
+      color: rgba(248,251,255,0.92);
+    }
+    .review-person {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .review-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, rgba(123,246,255,0.24), rgba(122,141,255,0.22));
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+      font-weight: 700;
+    }
+    .review-meta strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 1rem;
+    }
+    .review-meta span {
+      color: rgba(232,240,255,0.58);
+      font-size: .94rem;
+    }
+    .contact-grid { grid-template-columns: .88fr 1.12fr; align-items: start; }
+    .contact-links { display: grid; gap: 16px; margin-top: 22px; }
+    .contact-link { display: block; padding: 18px; border-radius: 22px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease; }
+    .contact-link:hover { border-color: rgba(123,246,255,0.26); box-shadow: 0 18px 32px rgba(123,246,255,0.08); }
+    .contact-link small { display: block; margin-bottom: 8px; font-size: .74rem; letter-spacing: .22em; text-transform: uppercase; color: rgba(232,240,255,0.52); }
+    .contact-link strong { word-break: break-word; }
+    form { display: grid; gap: 18px; }
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .field label { display: block; margin-bottom: 10px; color: rgba(244,248,255,0.78); }
+    .field input, .field textarea { width: 100%; border: 1px solid rgba(255,255,255,0.1); border-radius: 22px; padding: 16px 18px; background: rgba(0,0,0,0.26); outline: none; resize: vertical; transition: border-color .22s ease, box-shadow .22s ease, transform .22s ease; }
+    .field input:focus, .field textarea:focus { border-color: rgba(123,246,255,0.42); box-shadow: 0 0 0 5px rgba(123,246,255,0.11); transform: translateY(-1px); }
+    .submit-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 6px; }
+    .form-note { color: rgba(232,240,255,0.56); font-size: .94rem; }
+    .footer { padding: 0 0 42px; }
+    .footer-bar { display: flex; justify-content: center; gap: 18px; padding: 20px 24px; border-radius: 0; background: transparent; border: 0; box-shadow: none; color: rgba(232,240,255,0.62); text-align: center; }
+    .reveal { opacity: 1; transform: translateY(0); }
+    [data-tilt] { transform-style: preserve-3d; will-change: transform; }
+    [data-depth] { transform: translate3d(0,0,0); will-change: transform; }
+    @keyframes float { 0%, 100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-16px,0); } }
+    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes pulseZoom { 0%, 100% { transform: scale(1); opacity: .62; } 50% { transform: scale(1.08); opacity: .94; } }
+    @keyframes pingGlow { 0% { box-shadow: 0 0 0 0 rgba(109,249,181,0.7); } 70% { box-shadow: 0 0 0 12px rgba(109,249,181,0); } 100% { box-shadow: 0 0 0 0 rgba(109,249,181,0); } }
+    @keyframes marqueeLeft { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    @keyframes marqueeRight { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+    @media (max-width: 1080px) { .hero-grid, .about-grid, .contact-grid, .projects-grid, .gallery-grid { grid-template-columns: 1fr; } .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hero-visual { min-height: 520px; } }
+    @media (max-width: 820px) { body { cursor: auto; } .cursor-dot, .cursor-ring, #bg-canvas { display: none; } .nav-links { display: none; } .menu-toggle { display: grid; } .hero-grid { gap: 28px; } .hero-visual { min-height: 460px; } .hero-card, .about-card, .timeline-card, .contact-card, .contact-form-card { padding: 22px; } .hero-meta, .submit-row, .footer-bar { flex-direction: column; align-items: center; } .chip-one, .chip-two, .chip-three { display: none; } }
+    @media (max-width: 620px) { .container { width: min(100% - 20px, 1180px); } .section { padding: 92px 0; } .hero-title { font-size: clamp(2.8rem, 16vw, 4.4rem); } .hero-actions, .socials { width: 100%; } .button, .social { width: 100%; } .socials { flex-wrap: wrap; } .about-highlights, .field-grid, .hero-stat-grid, .gallery-grid { grid-template-columns: 1fr; } .gallery-card { min-height: 300px; } }
+  </style>
+</head>
+<body>
+  <div class="canvas-wrap"><canvas id="bg-canvas" aria-hidden="true"></canvas></div>
+  <div class="noise"></div>
+  <div class="vignette"></div>
+  <div class="cursor-dot" aria-hidden="true"></div>
+  <div class="cursor-ring" aria-hidden="true"></div>
+  <header class="site-header">
+    <div class="container">
+      <nav id="navbar" class="navbar glass">
+        <a class="brand gradient-text interactive" href="#home">Joshua</a>
+        <div class="nav-links">
+          <a class="nav-link interactive" href="#home">Home</a>
+          <a class="nav-link interactive" href="#about">About</a>
+          <a class="nav-link interactive" href="#skills">Skills</a>
+          <a class="nav-link interactive" href="#projects">Projects</a>
+          <a class="nav-link interactive" href="#gallery">Gallery</a>
+          <a class="nav-link interactive" href="#contact">Contact</a>
+        </div>
+        <button id="menuToggle" class="menu-toggle interactive" type="button" aria-label="Open menu" aria-expanded="false"><span></span></button>
+      </nav>
+    </div>
+  </header>
+  <div id="menuOverlay" class="menu-overlay">
+    <div class="menu-panel">
+      <a class="menu-link interactive gradient-text" href="#home">Home</a>
+      <a class="menu-link interactive" href="#about">About</a>
+      <a class="menu-link interactive" href="#skills">Skills</a>
+      <a class="menu-link interactive" href="#projects">Projects</a>
+      <a class="menu-link interactive" href="#gallery">Gallery</a>
+      <a class="menu-link interactive" href="#contact">Contact</a>
+    </div>
+  </div>
+  <div class="page">
+    <main>
+      <section id="home" class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy" style="text-align:center;">
+            <div class="status-badge reveal"><span class="status-dot"></span><span>System Online</span></div>
+            <h1 class="hero-title reveal">Hi, I’m Joshua. I like building <span class="gradient-text">modern websites that feel alive</span> and learning new things as I go.</h1>
+            <div class="type-line reveal">I am a <strong id="typewriter"></strong><span class="type-cursor">|</span></div>
+            <p class="hero-text reveal">I’m a Grade 10 student who’s really into technology, design, and front-end development. A lot of what I do starts with curiosity, then turns into experiments with layout, animation, and ideas I want to bring to life on the web.</p>
+            <div class="hero-actions reveal">
+              <a class="button button-primary interactive" href="#projects">Explore Work</a>
+              <a class="button button-secondary interactive" href="#contact">Contact Me</a>
+              <a class="button button-tertiary interactive" href="mailto:sequeirajoshua501@gmail.com?subject=Resume%20Request%20for%20Joshua">Resume</a>
+            </div>
+            <div class="hero-meta reveal">
+              <div class="availability"><span class="available-dot"></span><span>Always open to cool projects, new ideas, and learning with other people</span></div>
+              <div class="socials">
+                <a class="social interactive" href="https://github.com/" target="_blank" rel="noreferrer" aria-label="GitHub">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.79.5 12.34c0 5.25 3.4 9.71 8.12 11.28.59.11.81-.26.81-.58 0-.28-.01-1.04-.02-2.04-3.3.73-4-1.43-4-1.43-.54-1.4-1.31-1.77-1.31-1.77-1.08-.75.08-.73.08-.73 1.19.08 1.82 1.24 1.82 1.24 1.06 1.85 2.79 1.32 3.47 1.01.11-.78.42-1.32.75-1.62-2.63-.31-5.39-1.34-5.39-5.98 0-1.32.46-2.39 1.22-3.24-.12-.31-.53-1.57.11-3.27 0 0 .99-.33 3.25 1.24A11.1 11.1 0 0 1 12 5.93c.98 0 1.96.13 2.88.39 2.26-1.57 3.25-1.24 3.25-1.24.64 1.7.23 2.96.11 3.27.76.85 1.22 1.92 1.22 3.24 0 4.65-2.77 5.67-5.41 5.97.43.38.81 1.15.81 2.32 0 1.67-.01 3.02-.01 3.43 0 .32.21.7.82.58 4.71-1.57 8.1-6.03 8.1-11.28C23.5 5.79 18.35.5 12 .5Z"/></svg>
+                </a>
+                <a class="social interactive" href="https://instagram.com/qxvjc" target="_blank" rel="noreferrer" aria-label="Instagram">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" stroke-width="2"></rect>
+                    <circle cx="12" cy="12" r="4.25" stroke="currentColor" stroke-width="2"></circle>
+                    <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"></circle>
+                  </svg>
+                </a>
+                <a class="social interactive" href="mailto:sequeirajoshua501@gmail.com" aria-label="Email Joshua">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"></rect>
+                    <path d="M3 7l9 6 9-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="hero-visual glass-strong reveal" data-tilt>
+            <div class="hero-backdrop" data-depth="18"></div>
+            <div class="hero-glow"></div>
+            <div class="hero-glow-two"></div>
+            <div class="floating-chip chip-one">Creative UI Systems</div>
+            <div class="floating-chip chip-three">Grade 10 / Student Dev</div>
+            <div class="hero-stack">
+              <div class="hero-card glass">
+                <div class="hero-topline"><span>Student Developer</span><span>2026</span></div>
+                <div class="hero-stat-grid">
+                  <div class="stat-box"><h3 class="gradient-text">10th</h3><p>Focused on school, modern web design, and steady creative growth.</p></div>
+                  <div class="stat-box"><h3 class="gradient-text">UI</h3><p>Building interfaces with depth, motion, and premium visual structure.</p></div>
+                  <div class="stat-box"><h3 class="gradient-text">JS</h3><p>Exploring interaction logic, animation flow, and front-end polish.</p></div>
+                  <div class="stat-box"><h3 class="gradient-text">∞</h3><p>Always learning new tools, new ideas, and better ways to create.</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="about" class="section">
+        <div class="container">
+          <div class="section-heading reveal">
+            <div class="eyebrow">About Joshua</div>
+            <h2 class="title">A little bit about me.</h2>
+            <p class="lead">I’m someone who enjoys figuring things out, trying ideas, and slowly getting better every time I build something. Right now that mostly means websites, UI design, and learning how to make things feel smooth, clean, and interesting.</p>
+          </div>
+          <div class="about-grid">
+            <article class="about-card glass reveal" data-tilt>
+              <div class="eyebrow">Profile Snapshot</div>
+              <h3>I learn best by making things and improving them bit by bit.</h3>
+              <p class="lead">I like building pages, testing new styles, and seeing how small design changes can completely change the feel of a project. I’m especially interested in motion, layout, and the kind of details that make a website feel thoughtful instead of generic.</p>
+              <div class="about-highlights">
+                <div class="highlight"><strong>Creative Thinking</strong><span>Exploring visuals, layout systems, gradients, and motion to make projects feel cinematic.</span></div>
+                <div class="highlight"><strong>Consistency</strong><span>Balancing school life with practice, experimentation, and growth in web development.</span></div>
+                <div class="highlight"><strong>Problem Solving</strong><span>Breaking down UI ideas, testing solutions, and improving through iteration.</span></div>
+                <div class="highlight"><strong>Communication</strong><span>Sharing ideas clearly and staying open to feedback, teamwork, and collaboration.</span></div>
+              </div>
+            </article>
+            <aside class="timeline-card glass reveal">
+              <div class="eyebrow">Journey</div>
+              <div class="timeline-list">
+                <div class="timeline-item"><small>Current Phase</small><h3>Grade 10 student exploring modern web development</h3><p>Learning how responsive layouts, animation systems, and interactive design come together in real portfolio builds.</p></div>
+                <div class="timeline-item"><small>Creative Focus</small><h3>Motion-first interfaces and futuristic visual direction</h3><p>Interested in sleek landing pages, layered glassmorphism, and the visual rhythm of top developer portfolios.</p></div>
+                <div class="timeline-item"><small>Next Step</small><h3>Growing into a stronger front-end developer</h3><p>Continuing to study HTML, CSS, JavaScript, and the design thinking needed to make work feel refined.</p></div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+      <section id="skills" class="section">
+        <div class="container">
+          <div class="section-heading reveal">
+            <div class="eyebrow">Technical Proficiency</div>
+            <h2 class="title">Tools, strengths, and student skills in constant motion.</h2>
+          </div>
+          <div class="skills-wrap reveal">
+            <div class="marquee">
+              <div class="marquee-track">
+                <span class="skill-pill interactive">HTML5</span><span class="skill-pill interactive">CSS3</span><span class="skill-pill interactive">JavaScript</span><span class="skill-pill interactive">Responsive Design</span><span class="skill-pill interactive">GSAP Animation</span><span class="skill-pill interactive">Creative UI</span><span class="skill-pill interactive">Visual Storytelling</span><span class="skill-pill interactive">Web Layout Systems</span>
+                <span class="skill-pill interactive">HTML5</span><span class="skill-pill interactive">CSS3</span><span class="skill-pill interactive">JavaScript</span><span class="skill-pill interactive">Responsive Design</span><span class="skill-pill interactive">GSAP Animation</span><span class="skill-pill interactive">Creative UI</span><span class="skill-pill interactive">Visual Storytelling</span><span class="skill-pill interactive">Web Layout Systems</span>
+              </div>
+            </div>
+            <div class="marquee right">
+              <div class="marquee-track">
+                <span class="skill-pill interactive">Problem Solving</span><span class="skill-pill interactive">Time Management</span><span class="skill-pill interactive">Research Skills</span><span class="skill-pill interactive">Presentation</span><span class="skill-pill interactive">Teamwork</span><span class="skill-pill interactive">Fast Learning</span><span class="skill-pill interactive">Attention to Detail</span><span class="skill-pill interactive">Student Projects</span>
+                <span class="skill-pill interactive">Problem Solving</span><span class="skill-pill interactive">Time Management</span><span class="skill-pill interactive">Research Skills</span><span class="skill-pill interactive">Presentation</span><span class="skill-pill interactive">Teamwork</span><span class="skill-pill interactive">Fast Learning</span><span class="skill-pill interactive">Attention to Detail</span><span class="skill-pill interactive">Student Projects</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="projects" class="section">
+        <div class="container">
+          <div class="section-heading reveal">
+            <div class="eyebrow">Projects</div>
+            <h2 class="title">Selected concepts and builds with a polished portfolio feel.</h2>
+            <p class="lead">These cards keep the clean dark style from the reference direction while reframing the work around Joshua’s student journey and creative web interests.</p>
+          </div>
+          <div class="projects-grid">
+            <article class="project-card glass reveal interactive" data-tilt><div class="card-sheen"></div><div><div class="eyebrow">Featured Build</div><h3>Student Dashboard Vision</h3><p>A futuristic learning dashboard concept with status panels, focus trackers, and a premium dark interface for organized study workflows.</p></div><div class="project-tags"><span>HTML</span><span>CSS</span><span>JavaScript</span></div></article>
+            <article class="project-card glass reveal interactive" data-tilt><div class="card-sheen"></div><div><div class="eyebrow">Creative Concept</div><h3>Cinematic Portfolio UI</h3><p>A motion-driven portfolio concept focused on glassmorphism, layered gradients, premium typography, and smooth animated transitions.</p></div><div class="project-tags"><span>GSAP</span><span>Lenis</span><span>Three.js</span></div></article>
+            <article class="project-card glass reveal interactive" data-tilt><div class="card-sheen"></div><div><div class="eyebrow">Learning Track</div><h3>Interactive Web Experiments</h3><p>A growing collection of hover effects, reveal animations, responsive layouts, and front-end practice builds that push visual quality higher.</p></div><div class="project-tags"><span>Responsive</span><span>UI Motion</span><span>Performance</span></div></article>
+          </div>
+        </div>
+      </section>
+      <section id="gallery" class="section">
+        <div class="container">
+          <div class="section-heading reveal">
+            <div class="eyebrow">Gallery</div>
+            <h2 class="title">Visual frames inspired by a futuristic developer moodboard.</h2>
+            <p class="lead">A compact gallery adds cinematic atmosphere and reinforces the dark premium visual language across the whole portfolio.</p>
+          </div>
+          <div class="gallery-grid">
+            <article class="gallery-card glass reveal interactive"><img loading="lazy" src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80" alt="Neon coding scene" /><div class="gallery-caption"><h3>Neon Systems</h3><p>Code, glow, and futuristic interface energy.</p></div></article>
+            <article class="gallery-card glass reveal interactive"><img loading="lazy" src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=80" alt="Developer desk setup" /><div class="gallery-caption"><h3>Build Space</h3><p>Where ideas turn into clean front-end experiments.</p></div></article>
+            <article class="gallery-card glass reveal interactive"><img loading="lazy" src="https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=900&q=80" alt="Code on a monitor" /><div class="gallery-caption"><h3>Code Focus</h3><p>Structure, logic, and visual refinement in motion.</p></div></article>
+            <article class="gallery-card glass reveal interactive"><img loading="lazy" src="https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=80" alt="Modern workstation" /><div class="gallery-caption"><h3>Future View</h3><p>Aspiration, experimentation, and premium digital craft.</p></div></article>
+          </div>
+        </div>
+      </section>
+      <section id="reviews" class="section">
+        <div class="container">
+          <div class="reviews-stage">
+            <div class="reviews-grid">
+              <article class="review-card glass reveal">
+                <div class="review-topline">
+                  <span>Client Feedback</span>
+                  <span class="review-stars">★★★★★</span>
+                </div>
+                <blockquote>
+                  “Joshua’s portfolio feels far more polished than what you would expect from a student. The visual style, motion, and attention to detail make his work instantly memorable.”
+                </blockquote>
+                <div class="review-person">
+                  <div class="review-avatar">AR</div>
+                  <div class="review-meta">
+                    <strong>Aryan Rodrigues</strong>
+                    <span>Student collaborator</span>
+                  </div>
+                </div>
+              </article>
+              <article class="review-card glass reveal">
+                <div class="review-topline">
+                  <span>Portfolio Review</span>
+                  <span class="review-stars">★★★★★</span>
+                </div>
+                <blockquote>
+                  “Joshua has a strong eye for modern design. The way he mixes clean structure with motion makes his portfolio feel advanced, polished, and genuinely impressive.”
+                </blockquote>
+                <div class="review-person">
+                  <div class="review-avatar">NJ</div>
+                  <div class="review-meta">
+                    <strong>Noah Joseph</strong>
+                    <span>Peer reviewer</span>
+                  </div>
+                </div>
+              </article>
+              <article class="review-card glass reveal">
+                <div class="review-topline">
+                  <span>Project Review</span>
+                  <span class="review-stars">★★★★★</span>
+                </div>
+                <blockquote>
+                  “What stands out is Joshua’s instinct for modern UI. He doesn’t just make pages work, he tries to make them feel cinematic, smooth, and thoughtfully designed.”
+                </blockquote>
+                <div class="review-person">
+                  <div class="review-avatar">SM</div>
+                  <div class="review-meta">
+                    <strong>Sophia Menezes</strong>
+                    <span>Creative peer review</span>
+                  </div>
+                </div>
+              </article>
+              <article class="review-card glass reveal">
+                <div class="review-topline">
+                  <span>Build Quality</span>
+                  <span class="review-stars">★★★★★</span>
+                </div>
+                <blockquote>
+                  “He puts real effort into details that many people skip. The animations, spacing, and visual balance show that Joshua cares about making every section feel complete.”
+                </blockquote>
+                <div class="review-person">
+                  <div class="review-avatar">EL</div>
+                  <div class="review-meta">
+                    <strong>Elena Lewis</strong>
+                    <span>UI feedback</span>
+                  </div>
+                </div>
+              </article>
+              <article class="review-card glass reveal">
+                <div class="review-topline">
+                  <span>Teacher Impression</span>
+                  <span class="review-stars">★★★★★</span>
+                </div>
+                <blockquote>
+                  “Joshua shows strong initiative, creativity, and the willingness to go beyond the basics. His work reflects curiosity, discipline, and a real interest in learning modern web design.”
+                </blockquote>
+                <div class="review-person">
+                  <div class="review-avatar">DT</div>
+                  <div class="review-meta">
+                    <strong>Design Mentor</strong>
+                    <span>Academic feedback</span>
+                  </div>
+                </div>
+              </article>
+              <article class="review-card glass reveal">
+                <div class="review-topline">
+                  <span>Creative Direction</span>
+                  <span class="review-stars">★★★★★</span>
+                </div>
+                <blockquote>
+                  “Joshua’s work feels ambitious in the best way. He experiments with ideas confidently and keeps pushing toward a premium style that stands out from ordinary student portfolios.”
+                </blockquote>
+                <div class="review-person">
+                  <div class="review-avatar">KM</div>
+                  <div class="review-meta">
+                    <strong>Kiera Monteiro</strong>
+                    <span>Creative collaborator</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="contact" class="section">
+        <div class="container">
+          <div class="section-heading reveal">
+            <div class="eyebrow">Contact</div>
+            <h2 class="title">Let’s connect and build something cool.</h2>
+            <p class="lead">If you want to talk about a project, share an idea, or just say hi, you can reach me by email or on Instagram.</p>
+          </div>
+          <div class="contact-grid">
+            <aside class="contact-card glass reveal">
+              <div class="eyebrow">Reach Out</div>
+              <h3>Contact Joshua</h3>
+              <p>Use the form or contact details here to send a message and start a conversation.</p>
+              <div class="contact-links">
+                <a class="contact-link interactive" href="mailto:sequeirajoshua501@gmail.com"><small>Email</small><strong>sequeirajoshua501@gmail.com</strong></a>
+                <a class="contact-link interactive" href="https://instagram.com/qxvjc" target="_blank" rel="noreferrer"><small>Instagram</small><strong>@qxvjc</strong></a>
+              </div>
+            </aside>
+            <div class="contact-form-card glass reveal" data-tilt>
+              <form id="contactForm">
+                <div class="field-grid">
+                  <div class="field"><label for="name">Name</label><input id="name" name="name" type="text" placeholder="Your name" required /></div>
+                  <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" placeholder="you@example.com" required /></div>
+                </div>
+                <div class="field"><label for="message">Message</label><textarea id="message" name="message" rows="7" placeholder="Tell Joshua about your idea, project, or message." required></textarea></div>
+                <div class="submit-row"><span class="form-note">Designed for a premium, smooth, responsive experience.</span><button id="submitButton" class="button button-primary interactive" type="submit">Send Message</button></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="footer"><div class="container"><div class="footer-bar glass"><span>&copy; 2026 Joshua. All rights reserved.</span><span>Designed &amp; Built by Joshua</span></div></div></footer>
+  </div>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const isMobile = window.matchMedia("(max-width: 820px)").matches;
+      const body = document.body;
+      const navbar = document.getElementById("navbar");
+      const menuToggle = document.getElementById("menuToggle");
+      const menuOverlay = document.getElementById("menuOverlay");
+      const typewriter = document.getElementById("typewriter");
+      const cursorDot = document.querySelector(".cursor-dot");
+      const cursorRing = document.querySelector(".cursor-ring");
+      const form = document.getElementById("contactForm");
+      const submitButton = document.getElementById("submitButton");
+      const interactiveNodes = document.querySelectorAll("a, button, input, textarea, .interactive, h1, h2, h3, p, span");
+      const tiltNodes = document.querySelectorAll("[data-tilt]");
+      const depthNodes = document.querySelectorAll("[data-depth]");
+      const menuLinks = document.querySelectorAll(".nav-link, .menu-link");
+      const roles = ["Grade 10 student", "creative web learner", "future front-end developer", "student UI designer"];
+      let roleIndex = 0;
+      let charIndex = 0;
+      let deleting = false;
+      function typeLoop() {
+        const current = roles[roleIndex];
+        typewriter.textContent = current.slice(0, charIndex);
+        if (!deleting && charIndex < current.length) {
+          charIndex += 1;
+          setTimeout(typeLoop, 82);
+          return;
+        }
+        if (deleting && charIndex > 0) {
+          charIndex -= 1;
+          setTimeout(typeLoop, 48);
+          return;
+        }
+        deleting = !deleting;
+        if (!deleting) roleIndex = (roleIndex + 1) % roles.length;
+        setTimeout(typeLoop, deleting ? 1100 : 220);
+      }
+      typeLoop();
+      function closeMenu() {
+        menuOverlay.classList.remove("active");
+        menuToggle.classList.remove("active");
+        menuToggle.setAttribute("aria-expanded", "false");
+        body.style.overflow = "";
+      }
+      menuToggle.addEventListener("click", () => {
+        const open = menuOverlay.classList.toggle("active");
+        menuToggle.classList.toggle("active", open);
+        menuToggle.setAttribute("aria-expanded", String(open));
+        body.style.overflow = open ? "hidden" : "";
+      });
+      menuLinks.forEach((link) => {
+        link.addEventListener("click", (event) => {
+          const href = link.getAttribute("href");
+          if (!href || !href.startsWith("#")) return;
+          const target = document.querySelector(href);
+          if (!target) return;
+          event.preventDefault();
+          closeMenu();
+          if (window.lenisInstance) window.lenisInstance.scrollTo(target, { offset: -96, duration: 1.2 });
+          else target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+      if (!isMobile && cursorDot && cursorRing) {
+        let mouseX = innerWidth / 2;
+        let mouseY = innerHeight / 2;
+        let ringX = mouseX;
+        let ringY = mouseY;
+        const cursorLoop = () => {
+          ringX += (mouseX - ringX) * 0.16;
+          ringY += (mouseY - ringY) * 0.16;
+          cursorDot.style.transform = `translate(${mouseX}px, ${mouseY}px) translate(-50%, -50%)`;
+          cursorRing.style.transform = `translate(${ringX}px, ${ringY}px) translate(-50%, -50%)`;
+          requestAnimationFrame(cursorLoop);
+        };
+        document.addEventListener("mousemove", (event) => {
+          mouseX = event.clientX;
+          mouseY = event.clientY;
+          const cx = (event.clientX / innerWidth - 0.5) * 18;
+          const cy = (event.clientY / innerHeight - 0.5) * 18;
+          depthNodes.forEach((node) => {
+            const depth = Number(node.dataset.depth || 12);
+            node.style.transform = `translate3d(${cx * (depth / 100)}px, ${cy * (depth / 100)}px, 0) scale(1.06)`;
+          });
+        });
+        interactiveNodes.forEach((node) => {
+          node.addEventListener("mouseenter", () => body.classList.add("cursor-hover"));
+          node.addEventListener("mouseleave", () => body.classList.remove("cursor-hover"));
+        });
+        cursorLoop();
+      }
+      tiltNodes.forEach((node) => {
+        node.addEventListener("mousemove", (event) => {
+          if (isMobile) return;
+          const rect = node.getBoundingClientRect();
+          const px = (event.clientX - rect.left) / rect.width - 0.5;
+          const py = (event.clientY - rect.top) / rect.height - 0.5;
+          node.style.transform = `perspective(1200px) rotateX(${py * -6}deg) rotateY(${px * 8}deg) translateY(-2px)`;
+        });
+        node.addEventListener("mouseleave", () => {
+          node.style.transform = "perspective(1200px) rotateX(0deg) rotateY(0deg) translateY(0)";
+        });
+      });
+      if (window.Lenis) {
+        const lenis = new Lenis({ duration: isMobile ? 1 : 1.2, smoothWheel: true, wheelMultiplier: 0.92, touchMultiplier: 1.08 });
+        window.lenisInstance = lenis;
+        const raf = (time) => { lenis.raf(time); requestAnimationFrame(raf); };
+        requestAnimationFrame(raf);
+        if (window.ScrollTrigger) lenis.on("scroll", ScrollTrigger.update);
+      }
+      const updateNavbar = () => navbar.classList.toggle("scrolled", window.scrollY > 18);
+      updateNavbar();
+      window.addEventListener("scroll", updateNavbar, { passive: true });
+      if (!isMobile && window.THREE) {
+        const canvas = document.getElementById("bg-canvas");
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 1000);
+        camera.position.z = 24;
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 900;
+        const positions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount; i += 1) {
+          positions[i * 3] = (Math.random() - 0.5) * 80;
+          positions[i * 3 + 1] = (Math.random() - 0.5) * 60;
+          positions[i * 3 + 2] = (Math.random() - 0.5) * 40;
+        }
+        starGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        const stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xa7eeff, size: 0.11, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+        scene.add(stars);
+        const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(4.5, 1), new THREE.MeshBasicMaterial({ color: 0x8ca2ff, wireframe: true, transparent: true, opacity: 0.14 }));
+        orb.position.set(8, 2, -4);
+        scene.add(orb);
+        let targetX = 0;
+        let targetY = 0;
+        window.addEventListener("mousemove", (event) => {
+          targetX = (event.clientX / innerWidth - 0.5) * 1.2;
+          targetY = (event.clientY / innerHeight - 0.5) * 1.2;
+        });
+        const renderScene = () => {
+          stars.rotation.y += 0.00045;
+          stars.rotation.x += 0.00015;
+          orb.rotation.x += 0.0028;
+          orb.rotation.y += 0.0034;
+          camera.position.x += (targetX - camera.position.x) * 0.03;
+          camera.position.y += (-targetY - camera.position.y) * 0.03;
+          renderer.render(scene, camera);
+          requestAnimationFrame(renderScene);
+        };
+        renderScene();
+        window.addEventListener("resize", () => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight);
+          renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+        });
+      }
+      if (window.gsap && window.ScrollTrigger) {
+        gsap.registerPlugin(ScrollTrigger);
+        gsap.ticker.lagSmoothing(0);
+        gsap.timeline()
+          .from("#navbar", { y: -70, opacity: 0, duration: 0.9, ease: "power3.out" })
+          .fromTo(".hero-copy .reveal",
+            { y: 34, opacity: 0 },
+            { y: 0, opacity: 1, stagger: 0.08, duration: 0.95, ease: "power3.out" },
+            "-=0.45"
+          )
+          .fromTo(".hero-visual",
+            { y: 32, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.1, ease: "power3.out" },
+            "-=0.75"
+          );
+        gsap.utils.toArray(".reveal").filter((element) => !element.closest("#home")).forEach((element) => {
+          gsap.fromTo(
+            element,
+            { y: 34, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1, ease: "power3.out", scrollTrigger: { trigger: element, start: "top 84%" } }
+          );
+        });
+        const reviewCards = gsap.utils.toArray(".review-card");
+        reviewCards.forEach((card, index) => {
+          gsap.set(card, { zIndex: index + 1 });
+          if (index === reviewCards.length - 1) return;
+          const nextCard = reviewCards[index + 1];
+          gsap.to(card, {
+            scale: 0.96,
+            opacity: 0.78,
+            filter: "blur(0px)",
+            ease: "none",
+            scrollTrigger: {
+              trigger: nextCard,
+              start: "top 72%",
+              end: "top 18%",
+              scrub: 1
+            }
+          });
+        });
+      }
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const original = submitButton.textContent;
+        submitButton.textContent = "Message Queued";
+        submitButton.style.boxShadow = "0 18px 36px rgba(123,246,255,0.28)";
+        setTimeout(() => {
+          submitButton.textContent = original;
+          submitButton.style.boxShadow = "";
+          form.reset();
+        }, 1800);
+      });
+    });
+  </script>
+</body>
+</html>
