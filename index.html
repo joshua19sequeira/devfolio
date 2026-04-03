@@ -928,3 +928,12 @@
   </script>
 </body>
 </html>
+<p>Views: <span id="view-count">Loading...</span></p>
+
+<script>
+fetch('https://api.countapi.xyz/hit/your-site-name/visits')
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById('view-count').innerText = data.value;
+  });
+</script>
